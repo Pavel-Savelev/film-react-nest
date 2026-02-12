@@ -3,6 +3,8 @@ import { GetFilmDto } from './dto/films.dto';
 import { SessionDto } from './dto/films-schedule.dto';
 import { FilmsRepository } from './repositories/film.repository';
 import { ScheduleRepository } from './repositories/schedule.repository';
+import { Film } from './schemas/film.schema';
+import { Schedule } from './schemas/film.schedule.schema';
 
 @Injectable()
 export class FilmsService {
@@ -15,7 +17,7 @@ export class FilmsService {
     this.logger.log('FilmsService создан');
   }
 
-  private toFilmDto(film: any): GetFilmDto {
+  private toFilmDto(film: Film): GetFilmDto {
     return {
       id: film.id,
       rating: film.rating,
@@ -29,11 +31,11 @@ export class FilmsService {
     };
   }
 
-  private toScheduleDto(schedule: any): SessionDto {
+  private toScheduleDto(schedule: Schedule): SessionDto {
     return {
       id: schedule.id,
-      daytime: schedule.daytime,
-      hall: schedule.hall,
+      daytime: schedule.daytime.toISOString(),
+      hall: schedule.hall.toString(),
       rows: schedule.rows,
       seats: schedule.seats,
       price: schedule.price,

@@ -10,12 +10,17 @@ import {
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
 import { OrderRepository } from './repositories/order.repository';
+import { ScheduleRepository } from 'src/films/repositories/schedule.repository';
+import { OrderDocument } from './order.types';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
 
-  constructor(private readonly orderRepository: OrderRepository) {
+  constructor(
+    private readonly orderRepository: OrderRepository,
+    private readonly scheduleRepository: ScheduleRepository,
+  ) {
     this.logger.log('OrderService создан');
   }
   private async checkSeatAvailability(
@@ -24,13 +29,13 @@ export class OrderService {
     seat: number,
     row: number,
   ): Promise<boolean> {
-    const film = await this.orderRepository.findFilmById(filmId);
+    const film = await this.scheduleRepository.findByFilmId(filmId);
 
     if (!film) {
       throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
     }
 
-    const session = await film.schedule?.find((item) => item.id === sessionId);
+    const session = await film.find((item) => item.id === sessionId);
     if (!session) {
       throw new NotFoundException(
         `Сессий с таким id не найдено - ${sessionId}`,
@@ -80,9 +85,9 @@ export class OrderService {
     };
   }
 
-  private toResponseDto(order: any): ConfirmedOrder {
+  private toResponseDto(order: OrderDocument): ConfirmedOrder {
     return {
-      id: order._id.toString(),
+      id: order.id.toString(),
       film: order.film,
       session: order.session,
       daytime: order.daytime.toISOString(),
