@@ -1,15 +1,13 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Film } from './shcemas/film.schema';
 import { GetFilmDto } from './dto/films.dto';
 import { SessionDto } from './dto/films-schedule.dto';
+import { FilmsRepository } from './repositories/film.repository';
 
 @Injectable()
 export class FilmsService {
   private readonly logger = new Logger(FilmsService.name);
 
-  constructor(@InjectModel(Film.name) private filmModel: Model<Film>) {
+  constructor(private readonly filmsRepository: FilmsRepository) {
     this.logger.log('FilmsService создан');
   }
 
@@ -40,7 +38,7 @@ export class FilmsService {
   }
 
   async findAll() {
-    const films = await this.filmModel.find().lean().exec();
+    const films = await this.filmsRepository.findAll();
     const filmDto = films.map((film) => this.toFilmDto(film));
     return {
       total: films.length,
@@ -49,7 +47,7 @@ export class FilmsService {
   }
 
   async findSchedule(id: string) {
-    const film = await this.filmModel.findOne({ id: id }).lean().exec();
+    const film = await this.filmsRepository.findById(id);
 
     if (!film) {
       throw new NotFoundException(`Фильм с ID ${id} не найден`);
