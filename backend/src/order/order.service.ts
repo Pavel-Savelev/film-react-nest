@@ -26,6 +26,7 @@ export class OrderService {
   private async checkSeatAvailability(
     filmId: string,
     sessionId: string,
+    daytime: string,
     seat: number,
     row: number,
   ): Promise<boolean> {
@@ -35,7 +36,10 @@ export class OrderService {
       throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
     }
 
-    const session = (film.schedule || []).find((s) => s.id === sessionId);
+    const targetTime = new Date(daytime).getTime();
+    const session = (film.schedule || []).find(
+      (s) => new Date(s.daytime).getTime() === targetTime,
+    );
 
     if (!session) {
       throw new NotFoundException(
@@ -52,7 +56,10 @@ export class OrderService {
 
     session.taken = [...(session.taken || []), seatPosition];
 
-    await this.filmsRepository.updateFilm(filmId, { schedule: film.schedule });
+    await this.filmsRepository.updateOne(
+      { id: filmId, 'schedule.daytime': new Date(daytime) },
+      { $addToSet: { 'schedule.$.taken': seatPosition } },
+    );
 
     return !isTaken;
   }
@@ -61,11 +68,13 @@ export class OrderService {
     filmId: string,
     sessionId: string,
     seat: number,
+    daytime: string,
     row: number,
   ): Promise<void> {
     const isAvailable = await this.checkSeatAvailability(
       filmId,
       sessionId,
+      daytime,
       seat,
       row,
     );
@@ -110,6 +119,7 @@ export class OrderService {
         const isAvailable = await this.checkSeatAvailability(
           item.film,
           item.session,
+          item.daytime,
           item.seat,
           item.row,
         );
@@ -122,7 +132,13 @@ export class OrderService {
       }
 
       for (const item of orderItems) {
-        await this.takeSeat(item.film, item.session, item.seat, item.row);
+        await this.takeSeat(
+          item.film,
+          item.session,
+          item.seat,
+          item.daytime,
+          item.row,
+        );
       }
 
       const docsToCreate = orderItems.map((item) => this.toMongoDocument(item));

@@ -28,4 +28,8 @@ export class FilmsRepository {
 
     return updatedFilm.toObject();
   }
+
+  async updateOne(filter: any, update: any) {
+    return this.filmModel.updateOne(filter, update);
+  }
 }
