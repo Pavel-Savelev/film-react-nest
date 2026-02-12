@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GetFilmDto } from './dto/films.dto';
 import { SessionDto } from './dto/films-schedule.dto';
 import { FilmsRepository } from './repositories/film.repository';
+import { ScheduleRepository } from './repositories/schedule.repository';
 
 @Injectable()
 export class FilmsService {
   private readonly logger = new Logger(FilmsService.name);
 
-  constructor(private readonly filmsRepository: FilmsRepository) {
+  constructor(
+    private readonly filmsRepository: FilmsRepository,
+    private readonly scheduleRepository: ScheduleRepository,
+  ) {
     this.logger.log('FilmsService создан');
   }
 
@@ -46,15 +50,9 @@ export class FilmsService {
     };
   }
 
-  async findSchedule(id: string) {
-    const film = await this.filmsRepository.findById(id);
-
-    if (!film) {
-      throw new NotFoundException(`Фильм с ID ${id} не найден`);
-    }
-
-    const schedule = film.schedule || [];
-    const sessionDtos = schedule.map((film) => this.toScheduleDto(film));
+  async findSchedule(filmId: string) {
+    const schedule = await this.scheduleRepository.findByFilmId(filmId);
+    const sessionDtos = schedule.map((s) => this.toScheduleDto(s));
 
     return {
       total: sessionDtos.length,
