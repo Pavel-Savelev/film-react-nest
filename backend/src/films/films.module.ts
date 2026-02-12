@@ -3,8 +3,7 @@ import { FilmsService } from './films.service';
 import { FilmsController } from './films.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Film, FilmSchema } from './schemas/film.schema';
-import { FilmsRepository } from './repositories/film.repository'; // ← импорт
-import { ScheduleRepository } from './repositories/schedule.repository';
+import { FilmsRepository } from './repositories/film.repository';
 import { Schedule, ScheduleSchema } from './schemas/film.schedule.schema';
 
 @Module({
@@ -15,7 +14,7 @@ import { Schedule, ScheduleSchema } from './schemas/film.schedule.schema';
     ]),
   ],
   controllers: [FilmsController],
-  providers: [FilmsService, FilmsRepository, ScheduleRepository],
-  exports: [FilmsService, FilmsRepository, ScheduleRepository],
+  providers: [FilmsService, FilmsRepository],
+  exports: [FilmsService, FilmsRepository],
 })
 export class FilmsModule {}

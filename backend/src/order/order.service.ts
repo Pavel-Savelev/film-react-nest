@@ -10,7 +10,7 @@ import {
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
 import { OrderRepository } from './repositories/order.repository';
-import { ScheduleRepository } from 'src/films/repositories/schedule.repository';
+import { FilmsRepository } from 'src/films/repositories/film.repository';
 import { OrderDocument } from './order.types';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class OrderService {
 
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly scheduleRepository: ScheduleRepository,
+    private readonly filmsRepository: FilmsRepository,
   ) {
     this.logger.log('OrderService создан');
   }
@@ -29,13 +29,14 @@ export class OrderService {
     seat: number,
     row: number,
   ): Promise<boolean> {
-    const film = await this.scheduleRepository.findByFilmId(filmId);
+    const film = await this.filmsRepository.findById(filmId);
 
     if (!film) {
       throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
     }
 
-    const session = await film.find((item) => item.id === sessionId);
+    const session = (film.schedule || []).find((s) => s.id === sessionId);
+
     if (!session) {
       throw new NotFoundException(
         `Сессий с таким id не найдено - ${sessionId}`,
@@ -48,6 +49,10 @@ export class OrderService {
 
     const seatPosition = `${row}:${seat}`;
     const isTaken = session.taken?.includes(seatPosition) || false;
+
+    session.taken = [...(session.taken || []), seatPosition];
+
+    await this.filmsRepository.updateFilm(filmId, { schedule: film.schedule });
 
     return !isTaken;
   }

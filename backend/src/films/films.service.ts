@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GetFilmDto } from './dto/films.dto';
-import { SessionDto } from './dto/films-schedule.dto';
+import { GetFilmDto, GetResponsFilmsDto } from './dto/films.dto';
+import { ScheduleResponseDto, SessionDto } from './dto/films-schedule.dto';
 import { FilmsRepository } from './repositories/film.repository';
-import { ScheduleRepository } from './repositories/schedule.repository';
 import { Film } from './schemas/film.schema';
 import { Schedule } from './schemas/film.schedule.schema';
 
@@ -10,10 +9,7 @@ import { Schedule } from './schemas/film.schedule.schema';
 export class FilmsService {
   private readonly logger = new Logger(FilmsService.name);
 
-  constructor(
-    private readonly filmsRepository: FilmsRepository,
-    private readonly scheduleRepository: ScheduleRepository,
-  ) {
+  constructor(private readonly filmsRepository: FilmsRepository) {
     this.logger.log('FilmsService создан');
   }
 
@@ -32,9 +28,13 @@ export class FilmsService {
   }
 
   private toScheduleDto(schedule: Schedule): SessionDto {
+    const daytime =
+      schedule.daytime instanceof Date
+        ? schedule.daytime
+        : new Date(schedule.daytime);
     return {
       id: schedule.id,
-      daytime: schedule.daytime.toISOString(),
+      daytime: daytime.toISOString(),
       hall: schedule.hall.toString(),
       rows: schedule.rows,
       seats: schedule.seats,
@@ -43,7 +43,7 @@ export class FilmsService {
     };
   }
 
-  async findAll() {
+  async findAll(): Promise<GetResponsFilmsDto> {
     const films = await this.filmsRepository.findAll();
     const filmDto = films.map((film) => this.toFilmDto(film));
     return {
@@ -52,13 +52,14 @@ export class FilmsService {
     };
   }
 
-  async findSchedule(filmId: string) {
-    const schedule = await this.scheduleRepository.findByFilmId(filmId);
-    const sessionDtos = schedule.map((s) => this.toScheduleDto(s));
+  async findSchedule(filmId: string): Promise<ScheduleResponseDto> {
+    const film = await this.filmsRepository.findById(filmId);
+    console.log(film.id);
+    const sessions = film.schedule.map((s) => this.toScheduleDto(s));
 
     return {
-      total: sessionDtos.length,
-      items: sessionDtos,
+      total: sessions.length,
+      items: sessions,
     };
   }
 }

@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { ScheduleSchema, Schedule } from './film.schedule.schema';
 
 @Schema({ _id: true })
 export class Film {
@@ -20,6 +21,8 @@ export class Film {
   description: string;
   @Prop({ type: [String], default: [] })
   tags: string[];
+  @Prop({ type: [ScheduleSchema], default: [] })
+  schedule: Schedule[];
 }
 
 export const FilmSchema = SchemaFactory.createForClass(Film);
