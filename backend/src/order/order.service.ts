@@ -4,38 +4,43 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Order } from './schemas/order.schema';
 import {
   ConfirmedOrder,
   CreateOrderItemDto,
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
-import { Film } from 'src/films/shcemas/film.schema';
+import { OrderRepository } from './repositories/order.repository';
+import { FilmsRepository } from '../films/repositories/film.repository';
+import { OrderDocument } from './order.types';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
 
   constructor(
-    @InjectModel(Order.name) private orderModel: Model<Order>,
-    @InjectModel(Film.name) private filmModel: Model<Film>,
+    private readonly orderRepository: OrderRepository,
+    private readonly filmsRepository: FilmsRepository,
   ) {
     this.logger.log('OrderService создан');
   }
   private async checkSeatAvailability(
     filmId: string,
     sessionId: string,
+    daytime: string,
     seat: number,
     row: number,
   ): Promise<boolean> {
-    const film = await this.filmModel.findOne({ id: filmId }).lean().exec();
+    const film = await this.filmsRepository.findById(filmId);
+
     if (!film) {
       throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
     }
 
-    const session = await film.schedule?.find((item) => item.id === sessionId);
+    const targetTime = new Date(daytime).getTime();
+    const session = (film.schedule || []).find(
+      (s) => new Date(s.daytime).getTime() === targetTime,
+    );
+
     if (!session) {
       throw new NotFoundException(
         `Сессий с таким id не найдено - ${sessionId}`,
@@ -49,6 +54,13 @@ export class OrderService {
     const seatPosition = `${row}:${seat}`;
     const isTaken = session.taken?.includes(seatPosition) || false;
 
+    session.taken = [...(session.taken || []), seatPosition];
+
+    await this.filmsRepository.updateOne(
+      { id: filmId, 'schedule.daytime': new Date(daytime) },
+      { $addToSet: { 'schedule.$.taken': seatPosition } },
+    );
+
     return !isTaken;
   }
 
@@ -56,11 +68,13 @@ export class OrderService {
     filmId: string,
     sessionId: string,
     seat: number,
+    daytime: string,
     row: number,
   ): Promise<void> {
     const isAvailable = await this.checkSeatAvailability(
       filmId,
       sessionId,
+      daytime,
       seat,
       row,
     );
@@ -71,20 +85,9 @@ export class OrderService {
 
     const seatPosition = `${row}:${seat}`;
 
-    await this.filmModel
-      .updateOne(
-        {
-          id: filmId,
-          'schedule.id': sessionId,
-        },
-        {
-          $push: { 'schedule.$.taken': seatPosition },
-        },
-      )
-      .exec();
+    await this.orderRepository.takeSeat(filmId, sessionId, seatPosition);
   }
 
-  // Преобразование ДЛЯ MONGODB (DTO → MongoDB документ)
   private toMongoDocument(item: CreateOrderItemDto) {
     return {
       film: item.film,
@@ -96,10 +99,9 @@ export class OrderService {
     };
   }
 
-  // Преобразование ДЛЯ КЛИЕНТА (MongoDB документ → Response DTO)
-  private toResponseDto(order: any): ConfirmedOrder {
+  private toResponseDto(order: OrderDocument): ConfirmedOrder {
     return {
-      id: order._id.toString(),
+      id: order.id.toString(),
       film: order.film,
       session: order.session,
       daytime: order.daytime.toISOString(),
@@ -117,6 +119,7 @@ export class OrderService {
         const isAvailable = await this.checkSeatAvailability(
           item.film,
           item.session,
+          item.daytime,
           item.seat,
           item.row,
         );
@@ -129,11 +132,18 @@ export class OrderService {
       }
 
       for (const item of orderItems) {
-        await this.takeSeat(item.film, item.session, item.seat, item.row);
+        await this.takeSeat(
+          item.film,
+          item.session,
+          item.seat,
+          item.daytime,
+          item.row,
+        );
       }
 
       const docsToCreate = orderItems.map((item) => this.toMongoDocument(item));
-      const createdOrders = await this.orderModel.create(docsToCreate);
+      const createdOrders =
+        await this.orderRepository.createOrders(docsToCreate);
 
       const responseItems = createdOrders.map((order) =>
         this.toResponseDto(order),

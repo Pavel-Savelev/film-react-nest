@@ -1,19 +1,19 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Film } from './shcemas/film.schema';
-import { GetFilmDto } from './dto/films.dto';
-import { SessionDto } from './dto/films-schedule.dto';
+import { Injectable, Logger } from '@nestjs/common';
+import { GetFilmDto, GetResponsFilmsDto } from './dto/films.dto';
+import { ScheduleResponseDto, SessionDto } from './dto/films-schedule.dto';
+import { FilmsRepository } from './repositories/film.repository';
+import { Film } from './schemas/film.schema';
+import { Schedule } from './schemas/film.schedule.schema';
 
 @Injectable()
 export class FilmsService {
   private readonly logger = new Logger(FilmsService.name);
 
-  constructor(@InjectModel(Film.name) private filmModel: Model<Film>) {
+  constructor(private readonly filmsRepository: FilmsRepository) {
     this.logger.log('FilmsService создан');
   }
 
-  private toFilmDto(film: any): GetFilmDto {
+  private toFilmDto(film: Film): GetFilmDto {
     return {
       id: film.id,
       rating: film.rating,
@@ -27,11 +27,15 @@ export class FilmsService {
     };
   }
 
-  private toScheduleDto(schedule: any): SessionDto {
+  private toScheduleDto(schedule: Schedule): SessionDto {
+    const daytime =
+      schedule.daytime instanceof Date
+        ? schedule.daytime
+        : new Date(schedule.daytime);
     return {
       id: schedule.id,
-      daytime: schedule.daytime,
-      hall: schedule.hall,
+      daytime: daytime.toISOString(),
+      hall: schedule.hall.toString(),
       rows: schedule.rows,
       seats: schedule.seats,
       price: schedule.price,
@@ -39,8 +43,8 @@ export class FilmsService {
     };
   }
 
-  async findAll() {
-    const films = await this.filmModel.find().lean().exec();
+  async findAll(): Promise<GetResponsFilmsDto> {
+    const films = await this.filmsRepository.findAll();
     const filmDto = films.map((film) => this.toFilmDto(film));
     return {
       total: films.length,
@@ -48,19 +52,14 @@ export class FilmsService {
     };
   }
 
-  async findSchedule(id: string) {
-    const film = await this.filmModel.findOne({ id: id }).lean().exec();
-
-    if (!film) {
-      throw new NotFoundException(`Фильм с ID ${id} не найден`);
-    }
-
-    const schedule = film.schedule || [];
-    const sessionDtos = schedule.map((film) => this.toScheduleDto(film));
+  async findSchedule(filmId: string): Promise<ScheduleResponseDto> {
+    const film = await this.filmsRepository.findById(filmId);
+    console.log(film.id);
+    const sessions = film.schedule.map((s) => this.toScheduleDto(s));
 
     return {
-      total: sessionDtos.length,
-      items: sessionDtos,
+      total: sessions.length,
+      items: sessions,
     };
   }
 }
