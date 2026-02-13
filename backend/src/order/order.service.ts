@@ -10,7 +10,7 @@ import {
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
 import { OrderRepository } from './repositories/order.repository';
-import { FilmsRepository } from 'src/films/repositories/film.repository';
+import { FilmsRepository } from '../films/repositories/film.repository';
 import { OrderDocument } from './order.types';
 
 @Injectable()
