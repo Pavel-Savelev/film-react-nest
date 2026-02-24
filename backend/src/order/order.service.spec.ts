@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderService } from './order.service';
-import { OrderRepository } from './repositories/order.repository';
-import { FilmsRepository } from '../films/repositories/film.repository';
+import { OrderRepository } from 'src/repositories/order.repository';
+import { FilmsRepository } from 'src/repositories/film.repository';
 
 describe('OrderService', () => {
   let service: OrderService;
