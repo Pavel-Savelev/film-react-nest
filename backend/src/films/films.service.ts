@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GetFilmDto, GetResponsFilmsDto } from './dto/films.dto';
 import { ScheduleResponseDto, SessionDto } from './dto/films-schedule.dto';
-import { FilmsRepository } from './repositories/film.repository';
-import { Film } from './schemas/film.schema';
-import { Schedule } from './schemas/film.schedule.schema';
+import { FilmsRepository } from 'src/repositories/film.repository';
+import { Film } from './entities/film.entity';
+import { Schedule } from './entities/schedule.entity';
 
 @Injectable()
 export class FilmsService {
@@ -53,9 +53,9 @@ export class FilmsService {
   }
 
   async findSchedule(filmId: string): Promise<ScheduleResponseDto> {
-    const film = await this.filmsRepository.findById(filmId);
+    const film = await this.filmsRepository.findByFilmId(filmId);
     console.log(film.id);
-    const sessions = film.schedule.map((s) => this.toScheduleDto(s));
+    const sessions = film.schedules.map((s) => this.toScheduleDto(s));
 
     return {
       total: sessions.length,

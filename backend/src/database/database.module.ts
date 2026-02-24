@@ -28,7 +28,7 @@ type DbDriver = 'postgres';
           database: parsed.pathname.replace('/', ''),
           username: config.get<string>('DATABASE_USERNAME'),
           password: config.get<string>('DATABASE_PASSWORD'),
-          synchronize: false,
+          synchronize: true,
           entities: [Film, Schedule],
         };
       },

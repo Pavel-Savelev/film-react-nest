@@ -9,105 +9,62 @@ import {
   CreateOrderItemDto,
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
-import { OrderRepository } from './repositories/order.repository';
-import { FilmsRepository } from '../films/repositories/film.repository';
-import { OrderDocument } from './order.types';
+import { FilmsRepository } from 'src/repositories/film.repository'; // исправлен путь
+import { v4 as uuidv4 } from 'uuid'; // для генерации ID заказов
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
 
-  constructor(
-    private readonly orderRepository: OrderRepository,
-    private readonly filmsRepository: FilmsRepository,
-  ) {
+  constructor(private readonly filmsRepository: FilmsRepository) {
     this.logger.log('OrderService создан');
   }
+
   private async checkSeatAvailability(
     filmId: string,
     sessionId: string,
-    daytime: string,
     seat: number,
     row: number,
-  ): Promise<boolean> {
-    const film = await this.filmsRepository.findById(filmId);
+  ): Promise<{ available: boolean; schedule?: any }> {
+    const film = await this.filmsRepository.findByFilmId(filmId);
 
     if (!film) {
-      throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
+      throw new NotFoundException(`Фильм с id ${filmId} не найден`);
     }
 
-    const targetTime = new Date(daytime).getTime();
-    const session = (film.schedule || []).find(
-      (s) => new Date(s.daytime).getTime() === targetTime,
-    );
+    const session = film.schedules?.find((s) => s.id === sessionId);
 
     if (!session) {
-      throw new NotFoundException(
-        `Сессий с таким id не найдено - ${sessionId}`,
-      );
+      throw new NotFoundException(`Сеанс с id ${sessionId} не найден`);
     }
 
     if (row > session.rows || seat > session.seats || row < 1 || seat < 1) {
-      throw new NotFoundException(`Ошибка выбора места`);
+      throw new BadRequestException(
+        `Некорректное место: ряд ${row}, место ${seat}`,
+      );
     }
 
     const seatPosition = `${row}:${seat}`;
     const isTaken = session.taken?.includes(seatPosition) || false;
 
-    session.taken = [...(session.taken || []), seatPosition];
-
-    await this.filmsRepository.updateOne(
-      { id: filmId, 'schedule.daytime': new Date(daytime) },
-      { $addToSet: { 'schedule.$.taken': seatPosition } },
-    );
-
-    return !isTaken;
-  }
-
-  private async takeSeat(
-    filmId: string,
-    sessionId: string,
-    seat: number,
-    daytime: string,
-    row: number,
-  ): Promise<void> {
-    const isAvailable = await this.checkSeatAvailability(
-      filmId,
-      sessionId,
-      daytime,
-      seat,
-      row,
-    );
-
-    if (!isAvailable) {
-      throw new BadRequestException(`Место ${seat}:${row} занято`);
-    }
-
-    const seatPosition = `${row}:${seat}`;
-
-    await this.orderRepository.takeSeat(filmId, sessionId, seatPosition);
-  }
-
-  private toMongoDocument(item: CreateOrderItemDto) {
     return {
-      film: item.film,
-      session: item.session,
-      daytime: new Date(item.daytime),
-      row: item.row,
-      seat: item.seat,
-      price: item.price,
+      available: !isTaken,
+      schedule: session,
     };
   }
 
-  private toResponseDto(order: OrderDocument): ConfirmedOrder {
+  private toResponseDto(
+    item: CreateOrderItemDto,
+    orderId: string,
+  ): ConfirmedOrder {
     return {
-      id: order.id.toString(),
-      film: order.film,
-      session: order.session,
-      daytime: order.daytime.toISOString(),
-      row: order.row,
-      seat: order.seat,
-      price: order.price,
+      id: orderId,
+      film: item.film,
+      session: item.session,
+      daytime: item.daytime,
+      row: item.row,
+      seat: item.seat,
+      price: item.price,
     };
   }
 
@@ -115,45 +72,51 @@ export class OrderService {
     orderItems: CreateOrderItemDto[],
   ): Promise<CreateOrderResponseDto> {
     try {
+      this.logger.log(`Создание заказа для ${orderItems.length} билетов`);
+
       for (const item of orderItems) {
-        const isAvailable = await this.checkSeatAvailability(
+        const { available } = await this.checkSeatAvailability(
           item.film,
           item.session,
-          item.daytime,
           item.seat,
           item.row,
         );
 
-        if (!isAvailable) {
+        if (!available) {
           throw new BadRequestException(
-            `Место ${item.row}:${item.seat} уже занято`,
+            `Место ряд ${item.row}, место ${item.seat} уже занято`,
           );
         }
       }
 
+      const sessionsMap = new Map<string, string[]>();
+
       for (const item of orderItems) {
-        await this.takeSeat(
-          item.film,
-          item.session,
-          item.seat,
-          item.daytime,
-          item.row,
-        );
+        const key = `${item.film}:${item.session}`;
+        const seatKey = `${item.row}:${item.seat}`;
+
+        if (!sessionsMap.has(key)) {
+          sessionsMap.set(key, []);
+        }
+        sessionsMap.get(key)!.push(seatKey);
       }
 
-      const docsToCreate = orderItems.map((item) => this.toMongoDocument(item));
-      const createdOrders =
-        await this.orderRepository.createOrders(docsToCreate);
+      for (const [key, seats] of sessionsMap) {
+        const [filmId, sessionId] = key.split(':');
+        await this.filmsRepository.reserveSeats(filmId, sessionId, seats);
+      }
 
-      const responseItems = createdOrders.map((order) =>
-        this.toResponseDto(order),
-      );
+      const responseItems: ConfirmedOrder[] = orderItems.map((item) => {
+        const orderId = uuidv4(); // генерируем уникальный ID для каждого билета
+        return this.toResponseDto(item, orderId);
+      });
 
       return {
         total: responseItems.length,
         items: responseItems,
       };
     } catch (error) {
+      this.logger.error(`Ошибка при создании заказа: ${error.message}`);
       throw error;
     }
   }
