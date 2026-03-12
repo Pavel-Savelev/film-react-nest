@@ -1,16 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { GetFilmDto, GetResponsFilmsDto } from './dto/films.dto';
 import { ScheduleResponseDto, SessionDto } from './dto/films-schedule.dto';
 import { FilmsRepository } from 'src/repositories/film.repository';
 import { Film } from './entities/film.entity';
 import { Schedule } from './entities/schedule.entity';
+import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
 
 @Injectable()
 export class FilmsService {
-  private readonly logger = new Logger(FilmsService.name);
-
-  constructor(private readonly filmsRepository: FilmsRepository) {
-    this.logger.log('FilmsService создан');
+  constructor(
+    private readonly filmsRepository: FilmsRepository,
+    private readonly logger: HybridLogger,
+  ) {
+    this.logger.log('FilmsService initialized');
   }
 
   private toFilmDto(film: Film): GetFilmDto {
@@ -44,8 +46,11 @@ export class FilmsService {
   }
 
   async findAll(): Promise<GetResponsFilmsDto> {
+    this.logger.debug('Fetching films');
+
     const films = await this.filmsRepository.findAll();
     const filmDto = films.map((film) => this.toFilmDto(film));
+    this.logger.log(`Films fetched total: ${films.length}`);
     return {
       total: films.length,
       items: filmDto,
@@ -53,10 +58,19 @@ export class FilmsService {
   }
 
   async findSchedule(filmId: string): Promise<ScheduleResponseDto> {
-    const film = await this.filmsRepository.findByFilmId(filmId);
-    console.log(film.id);
-    const sessions = film.schedules.map((s) => this.toScheduleDto(s));
+    this.logger.debug(`Fetching schedule for film ${filmId}`);
 
+    const film = await this.filmsRepository.findByFilmId(filmId);
+    if (!film) {
+      this.logger.warn(`Film ${filmId} not found`);
+      throw new Error(`Film ${filmId} not found`);
+    }
+    const sessions = film.schedules.map((s) => this.toScheduleDto(s));
+    if (sessions.length === 0) {
+      this.logger.warn(`Film ${filmId} has no sessions`);
+    }
+
+    this.logger.log(`Film ${filmId} sessions total: ${sessions.length}`);
     return {
       total: sessions.length,
       items: sessions,

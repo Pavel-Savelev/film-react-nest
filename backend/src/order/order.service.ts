@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  Logger,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -12,13 +11,15 @@ import {
 } from './dto/create-order.dto';
 import { FilmsRepository } from '../repositories/film.repository';
 import { v4 as uuidv4 } from 'uuid';
+import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
 
 @Injectable()
 export class OrderService {
-  private readonly logger = new Logger(OrderService.name);
-
-  constructor(private readonly filmsRepository: FilmsRepository) {
-    this.logger.log('OrderService инициализирован');
+  constructor(
+    private readonly filmsRepository: FilmsRepository,
+    private readonly logger: HybridLogger,
+  ) {
+    this.logger.log('OrderService initialized');
   }
 
   private async validateSeatAvailability(
@@ -30,22 +31,26 @@ export class OrderService {
     const film = await this.filmsRepository.findByFilmId(filmId);
 
     if (!film) {
+      this.logger.warn(`Film ${filmId} not found`);
       throw new NotFoundException(`Фильм с ID ${filmId} не найден`);
     }
 
     const session = film.schedules?.find((s) => s.id === sessionId);
 
     if (!session) {
+      this.logger.warn(`Film ${filmId} has no sessions`);
       throw new NotFoundException(`Сеанс с ID ${sessionId} не найден`);
     }
 
     if (row < 1 || row > session.rows) {
+      this.logger.warn('Bad request position');
       throw new BadRequestException(
         `Некорректный ряд: ${row}. Допустимые ряды: 1-${session.rows}`,
       );
     }
 
     if (seat < 1 || seat > session.seats) {
+      this.logger.warn('Bad request position');
       throw new BadRequestException(
         `Некорректное место: ${seat}. Допустимые места: 1-${session.seats}`,
       );
@@ -61,7 +66,9 @@ export class OrderService {
   }
 
   private validateOrderItems(orderItems: CreateOrderItemDto[]): void {
+    this.logger.log(`Order length: ${orderItems.length}`);
     if (!orderItems || orderItems.length === 0) {
+      this.logger.warn('Order cannot be empty');
       throw new BadRequestException('Заказ не может быть пустым');
     }
 
@@ -70,6 +77,7 @@ export class OrderService {
       const key = `${item.film}:${item.session}:${item.row}:${item.seat}`;
 
       if (seatKeys.has(key)) {
+        this.logger.warn('Find same postitions on one Film');
         throw new BadRequestException(
           `Обнаружен дубликат места: фильм ${item.film}, сеанс ${item.session}, ряд ${item.row}, место ${item.seat}`,
         );
@@ -79,6 +87,7 @@ export class OrderService {
 
     for (const item of orderItems) {
       if (item.price <= 0) {
+        this.logger.warn(`Bad price count: ${item.price}`);
         throw new BadRequestException(
           `Некорректная цена: ${item.price}. Цена должна быть положительным числом`,
         );
@@ -105,7 +114,9 @@ export class OrderService {
     orderItems: CreateOrderItemDto[],
   ): Promise<CreateOrderResponseDto> {
     try {
-      this.logger.log(`Создание заказа для ${orderItems.length} билетов`);
+      this.logger.log(
+        `Create order. Order ticket length: ${orderItems.length}`,
+      );
 
       this.validateOrderItems(orderItems);
 
@@ -159,7 +170,7 @@ export class OrderService {
             .reserveSeats(filmId, sessionId, seats)
             .catch((error) => {
               this.logger.error(
-                `Ошибка резервирования мест для сеанса ${sessionId}: ${error.message}`,
+                `Error order postions by session ${sessionId}: ${error.message}`,
               );
               throw new ConflictException(
                 `Не удалось забронировать места для сеанса ${sessionId}. Возможно, они были заняты в процессе оформления.`,
@@ -180,14 +191,11 @@ export class OrderService {
         items: responseItems,
       };
 
-      this.logger.log(`Заказ успешно создан. Всего билетов: ${response.total}`);
+      this.logger.log(`Order success total tickets: ${response.total}`);
 
       return response;
     } catch (error) {
-      this.logger.error(
-        `Ошибка при создании заказа: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error create order : ${error.message}`, error.stack);
       throw error;
     }
   }

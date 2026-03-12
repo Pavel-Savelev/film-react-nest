@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { FilmsModule } from './films/films.module';
 import { OrderModule } from './order/order.module';
 import { DatabaseModule } from './database/database.module';
+import { HybridLoggerModule } from './logger/hybridLogger/hybrid.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DatabaseModule } from './database/database.module';
 
     FilmsModule,
     OrderModule,
+    HybridLoggerModule,
   ],
   controllers: [],
   providers: [],
