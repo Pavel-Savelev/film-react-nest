@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { TskvLogger } from './TskvLogger.service';
+import { TskvLogger } from './tskvLogger.service';
 
 @Global()
 @Module({
