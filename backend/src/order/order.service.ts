@@ -1,112 +1,111 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Order } from './schemas/order.schema';
 import {
   ConfirmedOrder,
   CreateOrderItemDto,
   CreateOrderResponseDto,
 } from './dto/create-order.dto';
-import { FilmsRepository } from '../repositories/film.repository';
-import { v4 as uuidv4 } from 'uuid';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { Film } from 'src/films/shcemas/film.schema';
 
 @Injectable()
 export class OrderService {
-  constructor(
-    private readonly filmsRepository: FilmsRepository,
-    private readonly logger: HybridLogger,
-  ) {
-    this.logger.log('OrderService initialized');
-  }
+  private readonly logger = new Logger(OrderService.name);
 
-  private async validateSeatAvailability(
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<Order>,
+    @InjectModel(Film.name) private filmModel: Model<Film>,
+  ) {
+    this.logger.log('OrderService создан');
+  }
+  private async checkSeatAvailability(
     filmId: string,
     sessionId: string,
     seat: number,
     row: number,
-  ): Promise<{ available: boolean; session?: any }> {
-    const film = await this.filmsRepository.findByFilmId(filmId);
-
+  ): Promise<boolean> {
+    const film = await this.filmModel.findOne({ id: filmId }).lean().exec();
     if (!film) {
-      this.logger.warn(`Film ${filmId} not found`);
-      throw new NotFoundException(`Фильм с ID ${filmId} не найден`);
+      throw new NotFoundException(`Фильм с таким id не найден - ${filmId}`);
     }
 
-    const session = film.schedules?.find((s) => s.id === sessionId);
-
+    const session = await film.schedule?.find((item) => item.id === sessionId);
     if (!session) {
-      this.logger.warn(`Film ${filmId} has no sessions`);
-      throw new NotFoundException(`Сеанс с ID ${sessionId} не найден`);
-    }
-
-    if (row < 1 || row > session.rows) {
-      this.logger.warn('Bad request position');
-      throw new BadRequestException(
-        `Некорректный ряд: ${row}. Допустимые ряды: 1-${session.rows}`,
+      throw new NotFoundException(
+        `Сессий с таким id не найдено - ${sessionId}`,
       );
     }
 
-    if (seat < 1 || seat > session.seats) {
-      this.logger.warn('Bad request position');
-      throw new BadRequestException(
-        `Некорректное место: ${seat}. Допустимые места: 1-${session.seats}`,
-      );
+    if (row > session.rows || seat > session.seats || row < 1 || seat < 1) {
+      throw new NotFoundException(`Ошибка выбора места`);
     }
 
     const seatPosition = `${row}:${seat}`;
     const isTaken = session.taken?.includes(seatPosition) || false;
 
-    return {
-      available: !isTaken,
-      session,
-    };
+    return !isTaken;
   }
 
-  private validateOrderItems(orderItems: CreateOrderItemDto[]): void {
-    this.logger.log(`Order length: ${orderItems.length}`);
-    if (!orderItems || orderItems.length === 0) {
-      this.logger.warn('Order cannot be empty');
-      throw new BadRequestException('Заказ не может быть пустым');
+  private async takeSeat(
+    filmId: string,
+    sessionId: string,
+    seat: number,
+    row: number,
+  ): Promise<void> {
+    const isAvailable = await this.checkSeatAvailability(
+      filmId,
+      sessionId,
+      seat,
+      row,
+    );
+
+    if (!isAvailable) {
+      throw new BadRequestException(`Место ${seat}:${row} занято`);
     }
 
-    const seatKeys = new Set<string>();
-    for (const item of orderItems) {
-      const key = `${item.film}:${item.session}:${item.row}:${item.seat}`;
+    const seatPosition = `${row}:${seat}`;
 
-      if (seatKeys.has(key)) {
-        this.logger.warn('Find same postitions on one Film');
-        throw new BadRequestException(
-          `Обнаружен дубликат места: фильм ${item.film}, сеанс ${item.session}, ряд ${item.row}, место ${item.seat}`,
-        );
-      }
-      seatKeys.add(key);
-    }
-
-    for (const item of orderItems) {
-      if (item.price <= 0) {
-        this.logger.warn(`Bad price count: ${item.price}`);
-        throw new BadRequestException(
-          `Некорректная цена: ${item.price}. Цена должна быть положительным числом`,
-        );
-      }
-    }
+    await this.filmModel
+      .updateOne(
+        {
+          id: filmId,
+          'schedule.id': sessionId,
+        },
+        {
+          $push: { 'schedule.$.taken': seatPosition },
+        },
+      )
+      .exec();
   }
 
-  private toResponseDto(
-    item: CreateOrderItemDto,
-    orderId: string,
-  ): ConfirmedOrder {
+  // Преобразование ДЛЯ MONGODB (DTO → MongoDB документ)
+  private toMongoDocument(item: CreateOrderItemDto) {
     return {
-      id: orderId,
       film: item.film,
       session: item.session,
-      daytime: item.daytime,
+      daytime: new Date(item.daytime),
       row: item.row,
       seat: item.seat,
       price: item.price,
+    };
+  }
+
+  // Преобразование ДЛЯ КЛИЕНТА (MongoDB документ → Response DTO)
+  private toResponseDto(order: any): ConfirmedOrder {
+    return {
+      id: order._id.toString(),
+      film: order.film,
+      session: order.session,
+      daytime: order.daytime.toISOString(),
+      row: order.row,
+      seat: order.seat,
+      price: order.price,
     };
   }
 
@@ -114,88 +113,37 @@ export class OrderService {
     orderItems: CreateOrderItemDto[],
   ): Promise<CreateOrderResponseDto> {
     try {
-      this.logger.log(
-        `Create order. Order ticket length: ${orderItems.length}`,
-      );
+      for (const item of orderItems) {
+        const isAvailable = await this.checkSeatAvailability(
+          item.film,
+          item.session,
+          item.seat,
+          item.row,
+        );
 
-      this.validateOrderItems(orderItems);
-
-      const availabilityChecks = await Promise.all(
-        orderItems.map(async (item) => {
-          const { available, session } = await this.validateSeatAvailability(
-            item.film,
-            item.session,
-            item.seat,
-            item.row,
+        if (!isAvailable) {
+          throw new BadRequestException(
+            `Место ${item.row}:${item.seat} уже занято`,
           );
-          return {
-            ...item,
-            available,
-            session,
-          };
-        }),
-      );
-
-      const unavailableSeats = availabilityChecks.filter(
-        (item) => !item.available,
-      );
-
-      if (unavailableSeats.length > 0) {
-        const seatsList = unavailableSeats
-          .map((item) => `ряд ${item.row}, место ${item.seat}`)
-          .join('; ');
-
-        throw new ConflictException(`Следующие места уже заняты: ${seatsList}`);
+        }
       }
-
-      const sessionsMap = new Map<string, string[]>();
 
       for (const item of orderItems) {
-        const key = `${item.film}:${item.session}`;
-        const seatKey = `${item.row}:${item.seat}`;
-
-        if (!sessionsMap.has(key)) {
-          sessionsMap.set(key, []);
-        }
-        sessionsMap.get(key)!.push(seatKey);
+        await this.takeSeat(item.film, item.session, item.seat, item.row);
       }
 
-      const reservationPromises = [];
+      const docsToCreate = orderItems.map((item) => this.toMongoDocument(item));
+      const createdOrders = await this.orderModel.create(docsToCreate);
 
-      for (const [key, seats] of sessionsMap) {
-        const [filmId, sessionId] = key.split(':');
+      const responseItems = createdOrders.map((order) =>
+        this.toResponseDto(order),
+      );
 
-        reservationPromises.push(
-          this.filmsRepository
-            .reserveSeats(filmId, sessionId, seats)
-            .catch((error) => {
-              this.logger.error(
-                `Error order postions by session ${sessionId}: ${error.message}`,
-              );
-              throw new ConflictException(
-                `Не удалось забронировать места для сеанса ${sessionId}. Возможно, они были заняты в процессе оформления.`,
-              );
-            }),
-        );
-      }
-
-      await Promise.all(reservationPromises);
-
-      const responseItems: ConfirmedOrder[] = orderItems.map((item) => {
-        const orderId = uuidv4();
-        return this.toResponseDto(item, orderId);
-      });
-
-      const response: CreateOrderResponseDto = {
+      return {
         total: responseItems.length,
         items: responseItems,
       };
-
-      this.logger.log(`Order success total tickets: ${response.total}`);
-
-      return response;
     } catch (error) {
-      this.logger.error(`Error create order : ${error.message}`, error.stack);
       throw error;
     }
   }
