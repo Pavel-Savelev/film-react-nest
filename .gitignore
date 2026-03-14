@@ -1,13 +1,2 @@
 node_modules
 .idea
-frontend/node_modules/
-frontend/dist/
-
-backend/node_modules/
-backend/dist/
-
-*.log
-
-*.env
-
-docker-compose.override.yml

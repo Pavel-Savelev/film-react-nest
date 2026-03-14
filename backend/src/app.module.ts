@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ConfigModule } from '@nestjs/config';
-import * as path from 'node:path';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { join } from 'path';
+
+import { configProvider } from './app.config.provider';
 import { FilmsModule } from './films/films.module';
 import { OrderModule } from './order/order.module';
-import { DatabaseModule } from './database/database.module';
-import { HybridLoggerModule } from './logger/hybridLogger/hybrid.module';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -14,18 +15,42 @@ import { HybridLoggerModule } from './logger/hybridLogger/hybrid.module';
       cache: true,
     }),
 
-    DatabaseModule,
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const uri = configService.get<string>(
+          'MONGODB_URI',
+          'mongodb://localhost:27017/afisha',
+        );
+        console.log(`Подключаемся к MongoDB: ${uri}`);
+
+        return {
+          uri,
+          connectionFactory: (connection) => {
+            connection.on('connected', () => {
+              console.log(' MongoDB  подключена');
+            });
+            connection.on('error', (err) => {
+              console.error('Ошибка подключения MongoDB', err.message);
+            });
+            connection.on('disconnected', () => {
+              console.log('MongoDB отключена');
+            });
+            return connection;
+          },
+        };
+      },
+      inject: [ConfigService],
+    }),
 
     ServeStaticModule.forRoot({
-      rootPath: path.join(process.cwd(), 'public', 'content', 'afisha'),
+      rootPath: join(__dirname, '..', 'public'),
       serveRoot: '/content/afisha',
     }),
 
     FilmsModule,
     OrderModule,
-    HybridLoggerModule,
   ],
-  controllers: [],
-  providers: [],
+  providers: [configProvider],
 })
 export class AppModule {}
