@@ -7,12 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
-  // app.setGlobalPrefix('api/afisha');
-  app.enableCors({
-    origin: 'http://production-test.nomorepartiessite.ru',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization',
-  });
+  app.setGlobalPrefix('api/afisha');
+  app.enableCors();
 
   const hybridLogger = app.get(HybridLogger);
   app.useLogger(hybridLogger);
