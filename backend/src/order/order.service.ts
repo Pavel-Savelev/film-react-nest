@@ -11,7 +11,17 @@ import {
 } from './dto/create-order.dto';
 import { FilmsRepository } from '../repositories/film.repository';
 import { v4 as uuidv4 } from 'uuid';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
+
+export interface FilmSession {
+  id: string;
+  daytime: Date;
+  hall: string;
+  rows: number;
+  seats: number;
+  price: number;
+  taken: string[];
+}
 
 @Injectable()
 export class OrderService {
@@ -27,7 +37,7 @@ export class OrderService {
     sessionId: string,
     seat: number,
     row: number,
-  ): Promise<{ available: boolean; session?: any }> {
+  ): Promise<{ available: boolean; session?: FilmSession }> {
     const film = await this.filmsRepository.findByFilmId(filmId);
 
     if (!film) {

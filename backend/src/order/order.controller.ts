@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderItemDto } from './dto/create-order.dto';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 @Controller('order')
 export class OrderController {

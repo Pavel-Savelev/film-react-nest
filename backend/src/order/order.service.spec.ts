@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderService } from './order.service';
-import { OrderRepository } from 'src/repositories/order.repository';
-import { FilmsRepository } from 'src/repositories/film.repository';
+import { OrderRepository } from '../repositories/order.repository';
+import { FilmsRepository } from '../repositories/film.repository';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 describe('OrderService', () => {
   let service: OrderService;
 
-  // Mock для репозиториев
   const mockOrderRepository = {
     findAll: jest.fn(),
     findById: jest.fn(),
@@ -18,12 +18,20 @@ describe('OrderService', () => {
     findById: jest.fn(),
   };
 
+  const mockHybridLogger = {
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderService,
         { provide: OrderRepository, useValue: mockOrderRepository },
         { provide: FilmsRepository, useValue: mockFilmsRepository },
+        { provide: HybridLogger, useValue: mockHybridLogger },
       ],
     }).compile();
 

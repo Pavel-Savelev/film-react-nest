@@ -22,10 +22,10 @@ describe('HybridLogger', () => {
   });
 
   it('should call all loggers on log', () => {
-    hybrid.log('hello', 'extra');
+    hybrid.log('hello', { context: 'test' });
 
-    expect(devLogger.log).toHaveBeenCalledWith('hello', 'extra');
-    expect(jsonLogger.log).toHaveBeenCalledWith('hello', 'extra');
-    expect(tskvLogger.log).toHaveBeenCalledWith('hello', 'extra');
+    expect(devLogger.log).toHaveBeenCalledWith('hello', { context: 'test' });
+    expect(jsonLogger.log).toHaveBeenCalledWith('hello', { context: 'test' });
+    expect(tskvLogger.log).toHaveBeenCalledWith('hello', { context: 'test' });
   });
 });

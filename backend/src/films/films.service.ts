@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { GetFilmDto, GetResponsFilmsDto } from './dto/films.dto';
 import { ScheduleResponseDto, SessionDto } from './dto/films-schedule.dto';
-import { FilmsRepository } from 'src/repositories/film.repository';
+import { FilmsRepository } from '../repositories/film.repository';
 import { Film } from './entities/film.entity';
 import { Schedule } from './entities/schedule.entity';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 @Injectable()
 export class FilmsService {
