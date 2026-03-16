@@ -8,7 +8,11 @@ async function bootstrap() {
     bufferLogs: true,
   });
   // app.setGlobalPrefix('api/afisha');
-  app.enableCors();
+  app.enableCors({
+    origin: 'http://production-test.nomorepartiessite.ru',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
+  });
 
   const hybridLogger = app.get(HybridLogger);
   app.useLogger(hybridLogger);
