@@ -32,7 +32,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - frontend_dist:/usr/share/nginx/html
+       - ./frontend/dist:/usr/share/nginx/html
     depends_on:
       - backend
     networks:
@@ -68,7 +68,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  frontend_dist:
   pgdata:
   pgadmindata:
 
