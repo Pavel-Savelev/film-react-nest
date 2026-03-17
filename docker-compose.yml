@@ -4,9 +4,11 @@ services:
   frontend-builder:
     build: ./frontend
     image: ghcr.io/pavel-savelev/film-frontend:latest
+    volumes:
+      - frontend_dist:/app/dist
     networks:
       - app-network
-    restart: no
+    restart: "no"
   backend:
     build: ./backend
     image: ghcr.io/pavel-savelev/film-backend:latest
@@ -68,6 +70,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  frontend_dist:
   pgdata:
   pgadmindata:
 
