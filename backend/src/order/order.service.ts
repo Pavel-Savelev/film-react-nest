@@ -5,9 +5,9 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import {
-  ConfirmedOrder,
-  CreateOrderItemDto,
+  ConfirmedOrderDto,
   CreateOrderResponseDto,
+  OrderTicketDto,
 } from './dto/create-order.dto';
 import { FilmsRepository } from '../repositories/film.repository';
 import { v4 as uuidv4 } from 'uuid';
@@ -75,7 +75,7 @@ export class OrderService {
     };
   }
 
-  private validateOrderItems(orderItems: CreateOrderItemDto[]): void {
+  private validateOrderItems(orderItems: OrderTicketDto[]): void {
     this.logger.log(`Order length: ${orderItems.length}`);
     if (!orderItems || orderItems.length === 0) {
       this.logger.warn('Order cannot be empty');
@@ -106,9 +106,9 @@ export class OrderService {
   }
 
   private toResponseDto(
-    item: CreateOrderItemDto,
+    item: OrderTicketDto,
     orderId: string,
-  ): ConfirmedOrder {
+  ): ConfirmedOrderDto {
     return {
       id: orderId,
       film: item.film,
@@ -121,7 +121,7 @@ export class OrderService {
   }
 
   async createOrders(
-    orderItems: CreateOrderItemDto[],
+    orderItems: OrderTicketDto[],
   ): Promise<CreateOrderResponseDto> {
     try {
       this.logger.log(
@@ -191,7 +191,7 @@ export class OrderService {
 
       await Promise.all(reservationPromises);
 
-      const responseItems: ConfirmedOrder[] = orderItems.map((item) => {
+      const responseItems: ConfirmedOrderDto[] = orderItems.map((item) => {
         const orderId = uuidv4();
         return this.toResponseDto(item, orderId);
       });

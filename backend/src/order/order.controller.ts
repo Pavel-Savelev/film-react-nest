@@ -1,9 +1,9 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CreateOrderItemDto } from './dto/create-order.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
-@Controller('order')
+@Controller('api/afisha/order')
 export class OrderController {
   constructor(
     private readonly orderService: OrderService,
@@ -11,8 +11,8 @@ export class OrderController {
   ) {}
 
   @Post()
-  async create(@Body() orderItems: CreateOrderItemDto[]) {
+  async create(@Body() order: CreateOrderDto) {
     this.logger.log('Create request');
-    return this.orderService.createOrders(orderItems);
+    return this.orderService.createOrders(order.tickets);
   }
 }
