@@ -1,4 +1,3 @@
-// src/orders/entities/order.entity.ts
 import {
   Entity,
   Column,
@@ -7,7 +6,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Film } from '../../films/entities/film.entity';
-import { Schedule } from 'src/films/entities/schedule.entity';
+import { Schedule } from '../../films/entities/schedule.entity';
 
 @Entity('orders')
 export class Order {

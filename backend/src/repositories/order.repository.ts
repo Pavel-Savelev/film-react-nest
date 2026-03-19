@@ -1,8 +1,9 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Order } from 'src/order/entities/order.entity';
-import { Film } from 'src/films/entities/film.entity';
+import { Order } from '../order/entities/order.entity';
+import { Film } from '../films/entities/film.entity';
 import { Injectable } from '@nestjs/common';
+import { OrderTicketDto } from '../order/dto/create-order.dto';
 
 @Injectable()
 export class OrderRepository {
@@ -24,7 +25,7 @@ export class OrderRepository {
       .exec();
   }
 
-  async createOrders(ordersData: any[]) {
+  async createOrders(ordersData: OrderTicketDto[]) {
     return this.orderModel.create(ordersData);
   }
 }

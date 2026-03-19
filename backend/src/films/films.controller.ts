@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { FilmsService } from './films.service';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 @Controller('api/afisha/films')
 export class FilmsController {

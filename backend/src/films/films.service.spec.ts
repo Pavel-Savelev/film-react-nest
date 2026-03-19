@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FilmsService } from './films.service';
-import { FilmsRepository } from 'src/repositories/film.repository';
+import { FilmsRepository } from '../repositories/film.repository';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 describe('FilmsService', () => {
   let service: FilmsService;
@@ -10,14 +11,19 @@ describe('FilmsService', () => {
     findById: jest.fn(),
   };
 
+  const mockLogger = {
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FilmsService,
-        {
-          provide: FilmsRepository,
-          useValue: mockFilmsRepository,
-        },
+        { provide: FilmsRepository, useValue: mockFilmsRepository },
+        { provide: HybridLogger, useValue: mockLogger }, // <-- добавляем сюда
       ],
     }).compile();
 

@@ -14,7 +14,7 @@ type DbDriver = 'postgres';
       useFactory: (config: ConfigService) => {
         const url = config.get<string>('DATABASE_URL');
         if (!url) {
-          throw new Error('DATABASE_URL is not defined');
+          throw new Error('DATABASE_HOST is not defined');
         }
 
         const parsed = new URL(url);

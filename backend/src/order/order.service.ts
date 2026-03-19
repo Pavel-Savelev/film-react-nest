@@ -5,13 +5,23 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import {
-  ConfirmedOrder,
-  CreateOrderItemDto,
+  ConfirmedOrderDto,
   CreateOrderResponseDto,
+  OrderTicketDto,
 } from './dto/create-order.dto';
 import { FilmsRepository } from '../repositories/film.repository';
 import { v4 as uuidv4 } from 'uuid';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
+
+export interface FilmSession {
+  id: string;
+  daytime: Date;
+  hall: string;
+  rows: number;
+  seats: number;
+  price: number;
+  taken: string[];
+}
 
 @Injectable()
 export class OrderService {
@@ -27,7 +37,7 @@ export class OrderService {
     sessionId: string,
     seat: number,
     row: number,
-  ): Promise<{ available: boolean; session?: any }> {
+  ): Promise<{ available: boolean; session?: FilmSession }> {
     const film = await this.filmsRepository.findByFilmId(filmId);
 
     if (!film) {
@@ -65,7 +75,7 @@ export class OrderService {
     };
   }
 
-  private validateOrderItems(orderItems: CreateOrderItemDto[]): void {
+  private validateOrderItems(orderItems: OrderTicketDto[]): void {
     this.logger.log(`Order length: ${orderItems.length}`);
     if (!orderItems || orderItems.length === 0) {
       this.logger.warn('Order cannot be empty');
@@ -96,9 +106,9 @@ export class OrderService {
   }
 
   private toResponseDto(
-    item: CreateOrderItemDto,
+    item: OrderTicketDto,
     orderId: string,
-  ): ConfirmedOrder {
+  ): ConfirmedOrderDto {
     return {
       id: orderId,
       film: item.film,
@@ -111,7 +121,7 @@ export class OrderService {
   }
 
   async createOrders(
-    orderItems: CreateOrderItemDto[],
+    orderItems: OrderTicketDto[],
   ): Promise<CreateOrderResponseDto> {
     try {
       this.logger.log(
@@ -181,7 +191,7 @@ export class OrderService {
 
       await Promise.all(reservationPromises);
 
-      const responseItems: ConfirmedOrder[] = orderItems.map((item) => {
+      const responseItems: ConfirmedOrderDto[] = orderItems.map((item) => {
         const orderId = uuidv4();
         return this.toResponseDto(item, orderId);
       });

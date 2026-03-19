@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FilmsController } from './films.controller';
 import { FilmsService } from './films.service';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 describe('FilmsController', () => {
   let controller: FilmsController;

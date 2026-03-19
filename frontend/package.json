@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "component": "sh ./bin/copy.sh Component src/components"
+    "component": "sh ./bin/copy.sh Component src/components",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/mongoose": "^11.0.4",

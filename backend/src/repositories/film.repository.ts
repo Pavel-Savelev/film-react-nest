@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { Film } from 'src/films/entities/film.entity';
-import { Schedule } from 'src/films/entities/schedule.entity';
+import { Film } from '../films/entities/film.entity';
+import { Schedule } from '../films/entities/schedule.entity';
 
 export class FilmNotFoundError extends Error {
   constructor() {

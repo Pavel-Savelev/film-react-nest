@@ -13,12 +13,12 @@ describe('JsonLogger', () => {
 
   it('should format log messages as JSON', () => {
     const message = 'test message';
-    logger.log(message, 'extra1', 'extra2');
+    logger.log(message, { extra: 'extra1' }, { extra: 'extra2' });
     expect(console.log).toHaveBeenCalledWith(
       JSON.stringify({
         level: 'log',
         message,
-        optionalParams: ['extra1', 'extra2'],
+        optionalParams: [{ extra: 'extra1' }, { extra: 'extra2' }],
       }),
     );
   });

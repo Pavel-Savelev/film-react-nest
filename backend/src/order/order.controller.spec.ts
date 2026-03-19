@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
-import { HybridLogger } from 'src/logger/hybridLogger/hybridLogger.service';
+import { HybridLogger } from '../logger/hybridLogger/hybridLogger.service';
 
 describe('OrderController', () => {
   let controller: OrderController;

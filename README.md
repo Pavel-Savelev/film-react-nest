@@ -1,3 +1,6 @@
+GOYDAAAA = http://production-test.nomorepartiessite.ru/
+
+
 # FILM!
 
 ## Установка
