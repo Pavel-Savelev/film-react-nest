@@ -15,7 +15,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgres://superuser:superUser@db:5432/films_project
       DATABASE_DRIVER: ${DATABASE_DRIVER}
       DATABASE_USERNAME: ${DATABASE_USERNAME}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
@@ -34,7 +34,8 @@ services:
     ports:
       - "80:80"
     volumes:
-       - ./frontend/dist:/usr/share/nginx/html
+       - frontend_dist:/usr/share/nginx/html
+       - ./backend/public/content/afisha:/usr/share/nginx/html/content/afisha
     depends_on:
       - backend
     networks:
@@ -43,7 +44,7 @@ services:
 
   db:
     image: postgres:15-alpine
-    environment: 
+    environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -56,7 +57,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
-    environment: 
+    environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
@@ -77,3 +78,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+
+
